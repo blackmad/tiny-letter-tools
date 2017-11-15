@@ -8,15 +8,16 @@ import logging
 import datetime
 import hashlib
 import HTMLParser
- 
+
+#from bs4 import BeautifulSoup
 from BeautifulSoup import BeautifulSoup
 import PyRSS2Gen
 
 class UserAgent(urllib.FancyURLopener):
     version = 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.15) Gecko/20110303 Firefox/3.6.15'
- 
+
 class TinyLetter:
-    
+
     def __init__(self, url):
 
         if not url.endswith('/'):
@@ -29,10 +30,10 @@ class TinyLetter:
 
     def as_rss(self, fh, **kwargs):
 
-        page = self.ua.open(self.url) 
+        page = self.ua.open(self.url)
         text = page.read()
         page.close()
- 
+
         soup = BeautifulSoup(text)
         title = soup.title.string
         title = title.strip()
@@ -94,7 +95,7 @@ class TinyLetter:
         fh.write("# %s\n" % title.encode("utf-8"))
         fh.write("## %s\n" % link.encode("utf-8"))
         fh.write("\n")
-        
+
         for ln in item.get('text', []):
             fh.write(ln.encode("utf-8"))
             fh.write("\n\n")
@@ -116,7 +117,7 @@ class TinyLetter:
         link = link.encode("utf-8")
 
         fh.write("<h1>%s <small>%s</small></h1>" % (title, link))
-        
+
         for ln in item.get('text', []):
             fh.write("<p>%s</p>" % ln.encode("utf-8"))
 
@@ -124,14 +125,14 @@ class TinyLetter:
 
     def as_list(self, **kwargs):
 
-        page = self.ua.open(self.url) 
+        page = self.ua.open(self.url)
         text = page.read()
         page.close()
- 
+
         soup = BeautifulSoup(text)
 
         letters = self.url + 'letters/'
-        
+
         for item in self.extract(letters, **kwargs):
             yield item
 
@@ -155,7 +156,7 @@ class TinyLetter:
         except Exception, e:
             logging.error("Failed to open %s, because %s" % (url, e))
             return items
- 
+
         try:
             soup = BeautifulSoup(text)
         except Exception, e:
@@ -170,13 +171,13 @@ class TinyLetter:
         except Exception, e:
             logging.error("Failed to parse link, because %s" % e)
             link = url
-            
+
         try:
             title = soup.find('meta', {'name': 'twitter:title'})
             title = title['content']
         except TypeError, e:
             title = soup.find('meta', {'property': 'og:title'})
-            
+
             if title:
                 title = title['content']
             else:
@@ -194,7 +195,7 @@ class TinyLetter:
 
             if desc:
                 desc = desc['content']
-                
+
         except Exception, e:
             logging.error("Failed to parse description, because %s" % e)
             desc = ""
@@ -204,16 +205,16 @@ class TinyLetter:
             date = header.find('div', {'class': 'date'})
             date = date.string
             date = date.strip()
-            pubdate = datetime.datetime.strptime(date, "%B %d, %Y") 
+            pubdate = datetime.datetime.strptime(date, "%B %d, %Y")
 
         except Exception, e:
             logging.error("Failed to parse date because %s, so just using 'now' instead" % e)
             pubdate = datetime.datetime.now()
-            
+
         hash = hashlib.md5()
         hash.update(link)
         guid = hash.hexdigest()
-        
+
         item = {
             'title': title,
             'description': desc,
@@ -235,7 +236,7 @@ class TinyLetter:
                 for t in body(text=True):
 
                     t = t.strip()
-                    
+
                     if len(t) == 0:
                         continue
 
@@ -245,7 +246,7 @@ class TinyLetter:
                     if len(t.split(" ")) > 1:
                         text.append(" ".join(buffer))
                         buffer = []
-                    
+
                 if len(buffer):
                     text.append(" ".join(buffer))
 
@@ -258,12 +259,12 @@ class TinyLetter:
             return items
 
         for tag in soup.findAll('a', href=True):
-            
+
             css = tag.get('class', None)
-            
+
             if not css:
                 continue
-                
+
             if not css == 'paging-button next':
                 continue
 
@@ -271,5 +272,5 @@ class TinyLetter:
 
             next = 'https://tinyletter.com' + tag['href']
             items = self.extract(next, **kwargs)
-            
+
         return items
